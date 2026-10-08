@@ -1,6 +1,7 @@
 select 'total ch over all queries, scales, partitions' description ;
 
 select
+  scale,
   avg(exec_ch)::numeric(9,1) tot_avg_exec_ch,
   avg(stddev_ch)::numeric(9,1) tot_avg_stddev_ch
 from (
@@ -56,4 +57,6 @@ where exec_ch notnull
 group by query, query_mode, scale, hostname
 order by query, query_mode, scale, hostname
 ) z
+group by rollup (scale)
+order by scale
 ;
