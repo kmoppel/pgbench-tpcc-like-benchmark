@@ -1,2 +1,3 @@
 # pgbench-tpcc-like-benchmark
-A simpel perf bench using pgbench-tpcc-like 
+A simple perf bench using [pgbench-tpcc-like](https://github.com/kmoppel/pgbench-tpcc-like), pushing individual run results
+into a $RESULTSDB for later aggregation / diff calculation. 
