@@ -45,7 +45,7 @@ ACTIVE_WHS=0.5 # 0.1..1.0, % of active dataset to be worked on
 PGBENCH_TRANSACTIONS=1000000  # PS per "client"!
 
 
-PGBENCH_PROTOCOL="simple"
+PGBENCH_PROTOCOL="prepared"
 PARTITIONS=0
 PGOPTIONS="-c synchronous_commit=off"
 PGBENCH_RAND_SEED=time  # "time" is pgbench default. Can set to a number for more repeatability, but as docs say "Use wisely."
