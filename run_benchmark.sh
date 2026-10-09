@@ -205,11 +205,11 @@ echo "Running the timed query test ..."
 
 pushd pgbench-tpcc-like/
 
-echo "PGOPTIONS="$PGOPTIONS" pgbench -n --random-seed $PGBENCH_RAND_SEED -M $PGBENCH_PROTOCOL -j $PGBENCH_JOBS -c $PGBENCH_CLIENTS -t $PGBENCH_TRANSACTIONS -P 300 -D ACTIVE_WHS=$ACTIVE_WHS \
+echo "PGOPTIONS="$PGOPTIONS" pgbench -n --random-seed $PGBENCH_RAND_SEED -M $PGBENCH_PROTOCOL -j $PGBENCH_JOBS -c $PGBENCH_CLIENTS -t $PGBENCH_TRANSACTIONS -P 300 -D ACTIVE_WHS=$ACTIVE_WHS -D NUM_WHS=$SCALE \
   -f new_order.pgbench@45 -f payment_transaction.pgbench@43 -f order_status.pgbench@4 \
   -f delivery_transaction.pgbench@4 -f stock_check.pgbench@4 "$CONNSTR_TESTDB" &> ${LOGDIR}/pgbench_testset_pg_${SERVER_VERSION_NUM}_q_${QUERY_MODE}_c_${PGBENCH_CLIENTS}_s_${SCALE}_p_${PARTITIONS}_rand_${PGBENCH_RAND_SEED}.log"
 TEST_LOOP_START_TIME=$(date +%s)
-PGOPTIONS="$PGOPTIONS" pgbench -n --random-seed $PGBENCH_RAND_SEED -M $PGBENCH_PROTOCOL -j $PGBENCH_JOBS -c $PGBENCH_CLIENTS -t $PGBENCH_TRANSACTIONS -P 300 -D ACTIVE_WHS=$ACTIVE_WHS \
+PGOPTIONS="$PGOPTIONS" pgbench -n --random-seed $PGBENCH_RAND_SEED -M $PGBENCH_PROTOCOL -j $PGBENCH_JOBS -c $PGBENCH_CLIENTS -t $PGBENCH_TRANSACTIONS -P 300 -D ACTIVE_WHS=$ACTIVE_WHS -D NUM_WHS=$SCALE \
   -f new_order.pgbench@45 -f payment_transaction.pgbench@43 -f order_status.pgbench@4 \
   -f delivery_transaction.pgbench@4 -f stock_check.pgbench@4 "$CONNSTR_TESTDB" &> ${LOGDIR}/pgbench_testset_pg_${SERVER_VERSION_NUM}_q_${QUERY_MODE}_c_${PGBENCH_CLIENTS}_s_${SCALE}_p_${PARTITIONS}_rand_${PGBENCH_RAND_SEED}.log
 TEST_LOOP_END_TIME=$(date +%s)
