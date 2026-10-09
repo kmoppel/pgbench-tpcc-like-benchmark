@@ -47,7 +47,7 @@ PGBENCH_TRANSACTIONS=1000000  # PS per "client"!
 
 PGBENCH_PROTOCOL="prepared"
 PARTITIONS=0
-PGOPTIONS="-c synchronous_commit=off"
+PGOPTIONS="-c synchronous_commit=on"
 PGBENCH_RAND_SEED=time  # "time" is pgbench default. Can set to a number for more repeatability, but as docs say "Use wisely."
 
 DISABLE_AUTOVACUUM=1 # To reduce randomness. Should combine with a bit of fillfactor in init flags to reduce write tx degradation for long test runs
@@ -192,6 +192,9 @@ echo "SCALE $SCALE resulted in $DB_SIZE , in $INIT_DUR seconds"
 echo "vacuum analyze ..."
 exec_sql "vacuum analyze"
 
+echo "Sleeping $SLEEP_BETWEEN_RUNS s before next test start ..."
+sleep $SLEEP_BETWEEN_RUNS
+
 echo -e "\nTable sizes"
 exec_sql "\dt+"
 
@@ -226,8 +229,8 @@ echo "tpcc-like test for scale $SCALE TX $PGBENCH_TRANSACTIONS finished in $TEST
 echo "Storing pg_stat_statements results into resultsdb public.pgss_results ..."
 
 # Assuming PG v13+
-echo "psql \"$CONNSTR_TESTDB\" -qXc \"copy (select '${EXEC_ENV}', '${START_TIME_PG}', '${HOSTNAME}', now(), $LOOP_DUR_S, ${PGVER_MAJOR}, ${SERVER_VERSION_NUM}, ${SCALE}, ${PARTITIONS}, ${PGBENCH_TRANSACTIONS}, ${PGBENCH_CLIENTS}, '${PROTOCOL}', '${QUERY_MODE}', mean_exec_time, stddev_exec_time, calls, rows, shared_blks_hit, shared_blks_read, shared_blk_read_time, shared_blk_write_time, query from public.pg_stat_statements where calls > 10 and query ~* '(INSERT|UPDATE|SELECT|DELETE).*(customer|district|history|item|new_order|oorder|order_line|stock|warehouse)') to stdout\" | psql \"$CONNSTR_RESULTSDB\" -qXc \"copy public.pgss_results from stdin\""
-psql "$CONNSTR_TESTDB" -qXc "copy (select '${EXEC_ENV}', '${START_TIME_PG}', '${HOSTNAME}', now(), $LOOP_DUR_S, ${PGVER_MAJOR}, ${SERVER_VERSION_NUM}, ${SCALE}, ${PARTITIONS}, ${PGBENCH_TRANSACTIONS}, ${PGBENCH_CLIENTS}, '${PROTOCOL}', '${QUERY_MODE}', mean_exec_time, stddev_exec_time, calls, rows, shared_blks_hit, shared_blks_read, shared_blk_read_time, shared_blk_write_time, query from public.pg_stat_statements where calls > 10 and query ~* '(INSERT|UPDATE|SELECT|DELETE).*(customer|district|history|item|new_order|oorder|order_line|stock|warehouse)') to stdout" | psql "$CONNSTR_RESULTSDB" -qXc "copy public.pgss_results from stdin"
+echo "psql \"$CONNSTR_TESTDB\" -qXc \"copy (select '${EXEC_ENV}', '${START_TIME_PG}', '${HOSTNAME}', now(), $LOOP_DUR_S, ${PGVER_MAJOR}, ${SERVER_VERSION_NUM}, ${SCALE}, ${PARTITIONS}, ${PGBENCH_TRANSACTIONS}, ${PGBENCH_CLIENTS}, '${PGBENCH_PROTOCOL}', '${QUERY_MODE}', mean_exec_time, stddev_exec_time, calls, rows, shared_blks_hit, shared_blks_read, shared_blk_read_time, shared_blk_write_time, query from public.pg_stat_statements where calls > 10 and query ~* '(INSERT|UPDATE|SELECT|DELETE).*(customer|district|history|item|new_order|oorder|order_line|stock|warehouse)') to stdout\" | psql \"$CONNSTR_RESULTSDB\" -qXc \"copy public.pgss_results from stdin\""
+psql "$CONNSTR_TESTDB" -qXc "copy (select '${EXEC_ENV}', '${START_TIME_PG}', '${HOSTNAME}', now(), $LOOP_DUR_S, ${PGVER_MAJOR}, ${SERVER_VERSION_NUM}, ${SCALE}, ${PARTITIONS}, ${PGBENCH_TRANSACTIONS}, ${PGBENCH_CLIENTS}, '${PGBENCH_PROTOCOL}', '${QUERY_MODE}', mean_exec_time, stddev_exec_time, calls, rows, shared_blks_hit, shared_blks_read, shared_blk_read_time, shared_blk_write_time, query from public.pg_stat_statements where calls > 10 and query ~* '(INSERT|UPDATE|SELECT|DELETE).*(customer|district|history|item|new_order|oorder|order_line|stock|warehouse)') to stdout" | psql "$CONNSTR_RESULTSDB" -qXc "copy public.pgss_results from stdin"
 
 echo "Sleeping $SLEEP_BETWEEN_RUNS s before next test start ..."
 sleep $SLEEP_BETWEEN_RUNS
