@@ -24,7 +24,6 @@ declare -a PGVER_MAJORS
 BINDIRS+=("/usr/lib/postgresql/18/bin")
 PGVER_MAJORS+=("18")
 BINDIRS+=("/usr/lib/postgresql/19/bin")
-#BINDIRS+=("/usr/local/pgsql_19beta3/bin")
 PGVER_MAJORS+=("19")
 
 
@@ -78,7 +77,7 @@ CREATE TABLE IF NOT EXISTS public.pgss_results AS
   SELECT ''::text AS exec_env, now() AS test_start_time, ''::text AS hostname,
   now() AS created_on, 0 AS loop_dur, 0::numeric AS pgver, 0 as pgminor, 0 AS scale, 0 as partitions, 0 AS transactions,
   0 AS clients, ''::text AS protocol, ''::text AS query_mode, mean_exec_time, stddev_exec_time, calls, rows, shared_blks_hit,
-  shared_blks_read, shared_blk_read_time, shared_blk_write_time, wal_bytes, query FROM public.pg_stat_statements
+  shared_blks_read, shared_blk_read_time, shared_blk_write_time, wal_bytes, 0::int8 as wal_loop_total, query FROM public.pg_stat_statements
   WHERE false;
 EOF
 )
@@ -189,6 +188,7 @@ if [ $INIT_TX -eq 0 ]; then
 fi
 
 T1=$(date +%s)
+echo "$PGBENCH \"$CONNSTR_TESTDB\" -n -f pgbench-tpcc-like/01_init_data.pgbench -c $PGBENCH_CLIENTS -t $INIT_TX -P 60"
 $PGBENCH "$CONNSTR_TESTDB" -n -f pgbench-tpcc-like/01_init_data.pgbench -c $PGBENCH_CLIENTS -t $INIT_TX -P 60
 psql "$CONNSTR_TESTDB" -Xqc "$1"
 
@@ -204,12 +204,14 @@ echo "SCALE $SCALE resulted in $DB_SIZE , in $INIT_DUR seconds"
 echo "vacuum analyze ..."
 exec_sql "vacuum analyze"
 
-echo "Sleeping $SLEEP_BETWEEN_RUNS s before next test start ..."
-sleep $SLEEP_BETWEEN_RUNS
+echo "checkpoint ..."
+exec_sql "checkpoint"
 
 echo -e "\nTable sizes"
 exec_sql "\dt+"
 
+echo "Sleeping $SLEEP_BETWEEN_RUNS s before next test start ..."
+sleep $SLEEP_BETWEEN_RUNS
 
 echo -e "\n*** Testing query model: $QUERY_MODE with protocol $PGBENCH_PROTOCOL ***\n"
 
@@ -239,13 +241,14 @@ TEST_DUR=$((T2-T1))
 DB_SIZE_AFTER_TEST_MBYTES=$(psql "$CONNSTR_TESTDB" -XAtqc "select (pg_database_size(current_database()) / 1e6)::int")
 DB_SIZE_DIFF=$((DB_SIZE_AFTER_TEST_MBYTES - DB_SIZE_MBYTES))
 WAL_DIFF=$(exec_sql_tup_only "select pg_size_pretty(pg_wal_lsn_diff(pg_current_wal_lsn(), '$WAL_LSN_T1')) as wal_lsn_location;")
+WAL_DIFF_BYTES=$(exec_sql_tup_only "select pg_wal_lsn_diff(pg_current_wal_lsn(), '$WAL_LSN_T1') as wal_lsn_location;")
 echo "tpcc-like test for scale $SCALE TX $PGBENCH_TRANSACTIONS finished in $TEST_DUR seconds, DB size diff $DB_SIZE_DIFF MB, WAL generated $WAL_DIFF"
 
 echo "Storing pg_stat_statements results into resultsdb public.pgss_results ..."
 
 # Assuming PG v13+
-echo "psql \"$CONNSTR_TESTDB\" -qXc \"copy (select '${EXEC_ENV}', '${START_TIME_PG}', '${HOSTNAME}', now(), $LOOP_DUR_S, ${PGVER_MAJOR}, ${SERVER_VERSION_NUM}, ${SCALE}, ${PARTITIONS}, ${PGBENCH_TRANSACTIONS}, ${PGBENCH_CLIENTS}, '${PGBENCH_PROTOCOL}', '${QUERY_MODE}', mean_exec_time, stddev_exec_time, calls, rows, shared_blks_hit, shared_blks_read, shared_blk_read_time, shared_blk_write_time, wal_bytes, query from public.pg_stat_statements where calls > 10 and query ~* '(INSERT|UPDATE|SELECT|DELETE).*(customer|district|history|item|new_order|oorder|order_line|stock|warehouse)') to stdout\" | psql \"$CONNSTR_RESULTSDB\" -qXc \"copy public.pgss_results from stdin\""
-psql "$CONNSTR_TESTDB" -qXc "copy (select '${EXEC_ENV}', '${START_TIME_PG}', '${HOSTNAME}', now(), $LOOP_DUR_S, ${PGVER_MAJOR}, ${SERVER_VERSION_NUM}, ${SCALE}, ${PARTITIONS}, ${PGBENCH_TRANSACTIONS}, ${PGBENCH_CLIENTS}, '${PGBENCH_PROTOCOL}', '${QUERY_MODE}', mean_exec_time, stddev_exec_time, calls, rows, shared_blks_hit, shared_blks_read, shared_blk_read_time, shared_blk_write_time, wal_bytes, query from public.pg_stat_statements where calls > 10 and query ~* '(INSERT|UPDATE|SELECT|DELETE).*(customer|district|history|item|new_order|oorder|order_line|stock|warehouse)') to stdout" | psql "$CONNSTR_RESULTSDB" -qXc "copy public.pgss_results from stdin"
+echo "psql \"$CONNSTR_TESTDB\" -qXc \"copy (select '${EXEC_ENV}', '${START_TIME_PG}', '${HOSTNAME}', now(), $LOOP_DUR_S, ${PGVER_MAJOR}, ${SERVER_VERSION_NUM}, ${SCALE}, ${PARTITIONS}, ${PGBENCH_TRANSACTIONS}, ${PGBENCH_CLIENTS}, '${PGBENCH_PROTOCOL}', '${QUERY_MODE}', mean_exec_time, stddev_exec_time, calls, rows, shared_blks_hit, shared_blks_read, shared_blk_read_time, shared_blk_write_time, wal_bytes, ${WAL_DIFF_BYTES}, query from public.pg_stat_statements where calls >= 10 and query ~* '(INSERT|UPDATE|SELECT|DELETE).*(customer|district|history|item|new_order|oorder|order_line|stock|warehouse)') to stdout\" | psql \"$CONNSTR_RESULTSDB\" -qXc \"copy public.pgss_results from stdin\""
+psql "$CONNSTR_TESTDB" -qXc "copy (select '${EXEC_ENV}', '${START_TIME_PG}', '${HOSTNAME}', now(), $LOOP_DUR_S, ${PGVER_MAJOR}, ${SERVER_VERSION_NUM}, ${SCALE}, ${PARTITIONS}, ${PGBENCH_TRANSACTIONS}, ${PGBENCH_CLIENTS}, '${PGBENCH_PROTOCOL}', '${QUERY_MODE}', mean_exec_time, stddev_exec_time, calls, rows, shared_blks_hit, shared_blks_read, shared_blk_read_time, shared_blk_write_time, wal_bytes, ${WAL_DIFF_BYTES}, query from public.pg_stat_statements where calls >= 10 and query ~* '(INSERT|UPDATE|SELECT|DELETE).*(customer|district|history|item|new_order|oorder|order_line|stock|warehouse)') to stdout" | psql "$CONNSTR_RESULTSDB" -qXc "copy public.pgss_results from stdin"
 
 echo "Sleeping $SLEEP_BETWEEN_RUNS s before next test start ..."
 sleep $SLEEP_BETWEEN_RUNS
