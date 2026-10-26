@@ -10,6 +10,7 @@ select pg_size_pretty(pg_database_size(current_database())) as db_size;
 select pg_database_size(current_database()) as db_size_bytes;
 
 select pg_wal_lsn_diff(pg_current_wal_lsn(), '0/0');
+select pg_size_pretty(pg_wal_lsn_diff(pg_current_wal_lsn(), '0/0')) as pg_wal_lsn_diff_pretty;
 
 \x on
 select (100.0 * ( blks_hit::numeric / ( blks_hit + blks_read)))::numeric(6,2) as sb_hit_rate from pg_stat_database where datname = current_database();
