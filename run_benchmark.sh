@@ -182,14 +182,14 @@ echo "Creating test data ..."
 date ; date +%s
 
 psql "$CONNSTR_TESTDB" -X -f pgbench-tpcc-like/00_schema.sql
-INIT_TX=$((SCALE/PGBENCH_CLIENTS))
+INIT_TX=$((SCALE/CPUS))
 if [ $INIT_TX -eq 0 ]; then
   INIT_TX=1
 fi
 
 T1=$(date +%s)
-echo "$PGBENCH \"$CONNSTR_TESTDB\" -n -f pgbench-tpcc-like/01_init_data.pgbench -c $PGBENCH_CLIENTS -t $INIT_TX -P 60"
-$PGBENCH "$CONNSTR_TESTDB" -n -f pgbench-tpcc-like/01_init_data.pgbench -c $PGBENCH_CLIENTS -t $INIT_TX -P 60
+echo "$PGBENCH \"$CONNSTR_TESTDB\" -n -f pgbench-tpcc-like/01_init_data.pgbench -c $CPUS -t $INIT_TX -P 60"
+$PGBENCH "$CONNSTR_TESTDB" -n -f pgbench-tpcc-like/01_init_data.pgbench -c $CPUS -t $INIT_TX -P 60
 psql "$CONNSTR_TESTDB" -Xqc "$1"
 
 echo "Init data finished"
